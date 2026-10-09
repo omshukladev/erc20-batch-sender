@@ -4,6 +4,8 @@ A non-custodial dApp for sending an ERC20 token to a whole list of wallets in a 
 
 Instead of firing off one transfer per recipient, TSender checks your allowance, approves its contract when needed, and calls `airdropERC20` once — everyone gets paid in the same transaction. The app never takes custody: your keys stay in your wallet and you sign every transaction.
 
+**Live demo:** https://erc20-batch-sender.vercel.app/ · **Source:** [omshukladev/erc20-batch-sender](https://github.com/omshukladev/erc20-batch-sender)
+
 ---
 
 ## Features
@@ -161,6 +163,8 @@ src/
 | `npm run anvil` | Start a local chain with the contracts pre-deployed |
 
 ## Deployment
+
+Live at **https://erc20-batch-sender.vercel.app/** (Vercel).
 
 Any Next.js host works — Vercel is the simplest. The only requirement is the `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` environment variable. There is no backend or database: all state lives on-chain, and the app is a wallet-connected front end.
 
