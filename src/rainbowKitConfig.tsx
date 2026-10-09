@@ -19,3 +19,4 @@ const config = getDefaultConfig({
 export default config; // Export for use in Providers
 
 //! npm install @x402/core @x402/evm @x402/svm @x402/extensions
+//! npm command: npm install @wagmi/core
