@@ -183,7 +183,6 @@ For a public deployment, drop the `anvil` entry from the `chains` array in `src/
 
 ## Acknowledgements
 
-- Built while following the [Cyfrin Updraft](https://updraft.cyfrin.io) full-stack Web3 course (TSender UI)
 - Inspired by [t-sender.com](https://t-sender.com)
 
 ## License
