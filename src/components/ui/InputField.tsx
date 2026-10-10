@@ -8,7 +8,25 @@ interface InputFieldProps {
   value: string;
   type?: string;
   large?: boolean;
+  index?: string;
+  hint?: string;
+  errorMessage?: string;
+  autoComplete?: string;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+}
+
+function AlertIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function InputField({
@@ -17,39 +35,76 @@ export default function InputField({
   value,
   type = "text",
   large = false,
+  index,
+  hint,
+  errorMessage,
+  autoComplete = "off",
   onChange,
 }: InputFieldProps) {
   const id = useId();
-  const fieldClass =
-    "w-full rounded-[10px] border border-black/10 bg-white px-3.5 py-2.5 text-sm text-black/85 shadow-sm transition-colors outline-none placeholder:text-black/30 focus:border-lime-400/70 focus:ring-2 focus:ring-lime-400/25 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/85 dark:placeholder:text-white/25 dark:focus:border-lime-400/60";
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const invalid = Boolean(errorMessage);
+  const describedBy =
+    [hint ? hintId : null, invalid ? errorId : null].filter(Boolean).join(" ") ||
+    undefined;
+
+  // 16px on small screens: anything under 1rem makes iOS Safari zoom the viewport on focus
+  const fieldClass = `mt-2 w-full rounded-[3px] border bg-paper px-3 py-2.5 font-mono text-base leading-relaxed text-ink transition-colors placeholder:text-ink-faint sm:text-[13px] ${
+    invalid ? "border-progress/70" : "border-line focus:border-signal"
+  }`;
+
+  const sharedProps = {
+    id,
+    placeholder,
+    value,
+    onChange,
+    spellCheck: false,
+    autoComplete,
+    autoCorrect: "off",
+    autoCapitalize: "none",
+    "aria-invalid": invalid || undefined,
+    "aria-describedby": describedBy,
+    className: large ? `${fieldClass} resize-y` : fieldClass,
+  };
 
   return (
-    <div className="flex flex-col gap-2">
-      <label
-        htmlFor={id}
-        className="text-sm font-medium text-black/70 dark:text-white/70"
-      >
-        {label}
-      </label>
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <label
+          htmlFor={id}
+          className="font-mono text-[11px] tracking-[0.14em] text-ink-soft uppercase"
+        >
+          {index && (
+            <span aria-hidden="true" className="mr-2 text-signal">
+              {index}
+            </span>
+          )}
+          {label}
+        </label>
+        {hint && (
+          <span id={hintId} className="font-mono text-[11px] text-ink-faint">
+            {hint}
+          </span>
+        )}
+      </div>
 
       {large ? (
-        <textarea
-          id={id}
-          rows={4}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          className={`${fieldClass} resize-y`}
-        />
+        <textarea rows={4} {...sharedProps} />
       ) : (
-        <input
-          id={id}
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          className={fieldClass}
-        />
+        <input type={type} {...sharedProps} />
+      )}
+
+      {invalid && (
+        <p
+          id={errorId}
+          className="mt-2 flex items-start gap-1.5 font-mono text-[11px] leading-relaxed text-progress"
+        >
+          <span className="mt-px shrink-0">
+            <AlertIcon />
+          </span>
+          <span>{errorMessage}</span>
+        </p>
       )}
     </div>
   );

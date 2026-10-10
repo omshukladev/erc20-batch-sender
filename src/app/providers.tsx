@@ -1,29 +1,50 @@
 "use client";
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import {
+  RainbowKitProvider,
+  darkTheme,
+  lightTheme,
+} from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import config from "@/rainbowKitConfig"; // Import the configuration we created
-// Import RainbowKit CSS for default styling
+import config from "@/rainbowKitConfig";
 import "@rainbow-me/rainbowkit/styles.css";
-// Create a single QueryClient instance
+
 const queryClient = new QueryClient();
-const rainbowKitTheme = darkTheme({
-  accentColor: "#a3e635",
-  accentColorForeground: "#0a0a0a",
-  borderRadius: "medium",
+
+const rainbowKitOptions = {
+  accentColor: "#e0a53a",
+  accentColorForeground: "#16181d",
+  borderRadius: "small",
+} as const;
+
+const darkRainbowKitTheme = darkTheme({
+  ...rainbowKitOptions,
+  overlayBlur: "small",
 });
-// Define the Providers component
+const lightRainbowKitTheme = lightTheme(rainbowKitOptions);
+
 export function Providers({ children }: { children: React.ReactNode }) {
-  // Hydration safety check: ensure component mounts on client before rendering children
+  // Hydration safety check: only render on the client once mounted
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const sync = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+    sync();
+    setMounted(true);
+    window.addEventListener("tsender:theme", sync);
+    return () => window.removeEventListener("tsender:theme", sync);
+  }, []);
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={rainbowKitTheme}>
-          {/* Only render children after client-side mounting */}
+        <RainbowKitProvider
+          theme={isDark ? darkRainbowKitTheme : lightRainbowKitTheme}
+        >
           {mounted ? children : null}
         </RainbowKitProvider>
       </QueryClientProvider>

@@ -55,47 +55,84 @@ const NOTES = [
   },
 ];
 
+const FACTS = [
+  { label: "Custody", value: "Non-custodial — you sign every transfer" },
+  { label: "Signatures", value: "1 approval + 1 airdrop" },
+  { label: "Recipients", value: "Unlimited, paid in a single block" },
+];
+
+function shortAddress(address: string) {
+  return `${address.slice(0, 10)}…${address.slice(-8)}`;
+}
+
 export default function Home() {
   const supportedNetworks = NETWORKS.filter(
     (network) => chainsToTSender[network.id]?.tsender,
   );
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
-      <section>
-        <span className="inline-block rounded-full border border-black/10 px-3 py-1 font-mono text-[10px] tracking-[0.16em] text-black/45 uppercase dark:border-white/15 dark:text-white/45">
-          Batch ERC20 transfers
-        </span>
-        <h1 className="mt-4 text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">
-          Send tokens to a whole list of wallets at once
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-black/60 dark:text-white/60">
-          TSender airdrops an ERC20 token to every recipient in a single transaction.
-          Instead of sending one transfer at a time, you approve once and the contract
-          pays everyone — cheaper, faster, and far less clicking. It never holds your
-          funds; you sign every transaction in your own wallet.
-        </p>
+    <main
+      id="main"
+      className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8"
+    >
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-line py-10 sm:py-14 lg:py-20">
+        <div
+          aria-hidden="true"
+          className="paper-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(120%_90%_at_78%_0%,black,transparent_68%)]"
+        />
+        <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
+          <div>
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.2em] text-ink-soft uppercase">
+              <span className="h-2 w-2 bg-signal" aria-hidden="true" />
+              Batch ERC20 transfer
+            </span>
+            <h1 className="mt-5 max-w-[16ch] font-display text-[34px] leading-[1.06] font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+              Send one token to a whole list of wallets.
+            </h1>
+            <p className="mt-5 max-w-[54ch] text-[15px] leading-relaxed text-ink-soft sm:text-base">
+              One approval, one transaction, everyone paid. TSender never holds
+              your tokens — you approve once and the contract distributes to
+              every address at the same time.
+            </p>
+          </div>
+
+          <dl className="border-t border-line lg:border-t-0">
+            {FACTS.map((fact) => (
+              <div
+                key={fact.label}
+                className="flex flex-col gap-1 border-b border-line py-3.5 sm:flex-row sm:items-baseline sm:gap-4 lg:py-4"
+              >
+                <dt className="w-28 shrink-0 font-mono text-[11px] tracking-[0.16em] text-ink-faint uppercase">
+                  {fact.label}
+                </dt>
+                <dd className="text-sm text-ink">{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
 
-      <section className="mt-8 sm:mt-10">
+      {/* Workbench */}
+      <section className="py-10 sm:py-14" aria-label="Airdrop builder">
         <AirdropForm />
       </section>
 
-      <section className="mt-12 sm:mt-16">
-        <h2 className="font-mono text-[11px] tracking-[0.16em] text-black/45 uppercase dark:text-white/45">
+      {/* Runbook */}
+      <section className="border-t border-line py-12 sm:py-16">
+        <h2 className="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
           How it works
         </h2>
-        <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+        <ol className="mt-8 grid gap-8 sm:grid-cols-3 sm:gap-10">
           {STEPS.map((step, index) => (
-            <li
-              key={step.title}
-              className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.03]"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-400 font-mono text-[11px] font-semibold text-[#0b0d0a]">
-                {index + 1}
+            <li key={step.title} className="border-t border-line-strong pt-4">
+              <span className="font-mono text-xs font-medium text-signal">
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <h3 className="mt-3 text-sm font-semibold">{step.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-black/55 dark:text-white/55">
+              <h3 className="mt-3 font-display text-xl leading-snug font-semibold tracking-tight">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 {step.body}
               </p>
             </li>
@@ -103,18 +140,23 @@ export default function Home() {
         </ol>
       </section>
 
-      <section className="mt-10 sm:mt-14">
-        <h2 className="font-mono text-[11px] tracking-[0.16em] text-black/45 uppercase dark:text-white/45">
+      {/* Good to know */}
+      <section className="border-t border-line py-12 sm:py-16">
+        <h2 className="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
           Good to know
         </h2>
-        <ul className="mt-4 flex flex-col gap-3">
+        <ul className="mt-8 grid gap-x-12 gap-y-6 lg:grid-cols-2">
           {NOTES.map((note) => (
-            <li key={note.lead} className="flex gap-2.5">
-              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-lime-400" />
-              <p className="text-sm leading-relaxed text-black/60 dark:text-white/60">
-                <span className="font-medium text-black/85 dark:text-white/85">
-                  {note.lead}
-                </span>{" "}
+            <li
+              key={note.lead}
+              className="grid grid-cols-[auto_1fr] gap-x-3 border-t border-line pt-4"
+            >
+              <span
+                className="mt-[7px] h-1.5 w-1.5 shrink-0 bg-signal"
+                aria-hidden="true"
+              />
+              <p className="text-sm leading-relaxed text-ink-soft">
+                <span className="font-medium text-ink">{note.lead}</span>{" "}
                 {note.body}
               </p>
             </li>
@@ -122,46 +164,99 @@ export default function Home() {
         </ul>
       </section>
 
-      <section className="mt-10 sm:mt-14">
-        <h2 className="font-mono text-[11px] tracking-[0.16em] text-black/45 uppercase dark:text-white/45">
-          Supported networks
-        </h2>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {supportedNetworks.map((network) => (
-            <span
-              key={network.id}
-              className="rounded-full border border-black/10 px-3 py-1.5 text-xs text-black/65 dark:border-white/15 dark:text-white/65"
-            >
-              {network.name}
-            </span>
-          ))}
+      {/* Network ledger */}
+      <section className="border-t border-line py-12 sm:py-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
+            Deployment ledger
+          </h2>
+          <span className="font-mono text-[11px] text-ink-faint">
+            {supportedNetworks.length} live deployments
+          </span>
         </div>
-        <p className="mt-3 text-xs text-black/45 dark:text-white/45">
-          Connect to any of these and TSender uses the contract deployed there. On a
-          network it doesn&apos;t know, it&apos;ll tell you instead of guessing.
+
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-left">
+            <caption className="sr-only">
+              TSender contract address and chain ID for every supported network
+            </caption>
+            <thead>
+              <tr className="border-b border-line-strong">
+                <th
+                  scope="col"
+                  className="py-2.5 pr-4 font-mono text-[11px] font-medium tracking-[0.14em] text-ink-faint uppercase"
+                >
+                  Network
+                </th>
+                <th
+                  scope="col"
+                  className="py-2.5 pr-4 font-mono text-[11px] font-medium tracking-[0.14em] text-ink-faint uppercase"
+                >
+                  Chain ID
+                </th>
+                <th
+                  scope="col"
+                  className="py-2.5 font-mono text-[11px] font-medium tracking-[0.14em] text-ink-faint uppercase"
+                >
+                  TSender contract
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {supportedNetworks.map((network) => {
+                const address = chainsToTSender[network.id].tsender;
+                return (
+                  <tr
+                    key={network.id}
+                    className="border-b border-line transition-colors hover:bg-surface-2"
+                  >
+                    <td className="py-3 pr-4 text-sm text-ink">
+                      {network.name}
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-[13px] text-ink-soft">
+                      {network.id}
+                    </td>
+                    <td
+                      className="py-3 font-mono text-[13px] text-ink-soft"
+                      title={address}
+                    >
+                      <span aria-hidden="true">{shortAddress(address)}</span>
+                      <span className="sr-only">{address}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 max-w-[60ch] text-xs leading-relaxed text-ink-faint">
+          Connect to one of these and TSender uses the contract deployed there.
+          On a network it doesn&apos;t know, it tells you instead of guessing.
         </p>
       </section>
 
-      <footer className="mt-12 flex flex-col gap-3 border-t border-black/10 pt-6 text-xs text-black/45 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:text-white/45">
-        <p>Non-custodial. Your keys, your tokens, your transactions.</p>
-        <div className="flex items-center gap-4">
+      <footer className="flex flex-col gap-3 border-t border-line py-8 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono tracking-[0.08em] uppercase">
+          Non-custodial · your keys, your tokens, your transactions
+        </p>
+        <nav aria-label="Footer" className="flex items-center gap-5 font-mono">
           <a
             href={GITHUB_REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="transition-colors hover:text-black dark:hover:text-white"
+            className="inline-flex min-h-11 items-center transition-colors hover:text-ink"
           >
-            Source code
+            Source
           </a>
           <a
             href="https://t-sender.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="transition-colors hover:text-black dark:hover:text-white"
+            className="inline-flex min-h-11 items-center transition-colors hover:text-ink"
           >
             Inspired by t-sender.com
           </a>
-        </div>
+        </nav>
       </footer>
     </main>
   );

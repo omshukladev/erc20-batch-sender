@@ -10,13 +10,23 @@ import { calculateTotal } from "@/utils/calculateTotal/calculateTotal";
 const STORAGE_KEY = "tsender-form-inputs";
 const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
+const CHAIN_NAMES: Record<number, string> = {
+  1: "Ethereum",
+  10: "OP Mainnet",
+  324: "zkSync Era",
+  8453: "Base",
+  42161: "Arbitrum One",
+  11155111: "Sepolia",
+  31337: "Anvil",
+};
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (
       error.name === "UserRejectedRequestError" ||
       /user (rejected|denied)/i.test(error.message)
     ) {
-      return "Transaction cancelled in your wallet.";
+      return "You cancelled the request in your wallet. Nothing was sent.";
     }
     const { shortMessage } = error as { shortMessage?: string };
     return shortMessage ?? error.message;
@@ -27,7 +37,7 @@ function getErrorMessage(error: unknown): string {
 function Spinner() {
   return (
     <svg
-      className="h-4 w-4 animate-spin"
+      className="loading-spinner h-4 w-4 animate-spin"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
@@ -50,14 +60,9 @@ function Spinner() {
   );
 }
 
-function CheckIcon() {
+function CheckIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M20 6L9 17l-5-5"
         stroke="currentColor"
@@ -71,12 +76,7 @@ function CheckIcon() {
 
 function AlertIcon() {
   return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
         stroke="currentColor"
@@ -85,6 +85,32 @@ function AlertIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-line/70 py-2.5 last:border-b-0">
+      <dt className="font-mono text-[11px] tracking-[0.1em] text-ink-faint uppercase">
+        {label}
+      </dt>
+      <dd
+        className={`min-w-0 truncate text-right font-mono text-[13px] ${
+          accent ? "text-signal" : "text-ink"
+        }`}
+        title={typeof value === "string" ? value : undefined}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 
@@ -103,7 +129,7 @@ export default function AirdropForm() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const config = useConfig();
-  const chainId = useChainId(); // state to hold the current chain ID which address user is connected to
+  const chainId = useChainId();
   const account = useAccount();
   const total: number = useMemo(() => calculateTotal(amounts), [amounts]);
 
@@ -210,18 +236,54 @@ export default function AirdropForm() {
       ? Number(formatUnits(BigInt(total), tokenDecimals)).toFixed(2)
       : null;
 
+  const validToken = ADDRESS_REGEX.test(tokenAddress);
+  const listsAligned =
+    recipientList.length > 0 && recipientList.length === amountList.length;
+
+  const checks = [
+    {
+      ok: Boolean(account.address),
+      pass: "Wallet connected",
+      fail: "Connect a wallet to sign",
+    },
+    {
+      ok: validToken,
+      pass: "Token address is valid",
+      fail: "Enter a valid token address",
+    },
+    {
+      ok: listsAligned,
+      pass: `Lists aligned · ${recipientList.length} recipient${
+        recipientList.length === 1 ? "" : "s"
+      }`,
+      fail:
+        recipientList.length || amountList.length
+          ? `Lists misaligned · ${recipientList.length} recipients, ${amountList.length} amounts`
+          : "Add recipients and matching amounts",
+    },
+  ];
+
+  const misalignedMessage =
+    recipientList.length > 0 && !listsAligned
+      ? `Recipients and amounts must line up. ${recipientList.length} recipient${
+          recipientList.length === 1 ? "" : "s"
+        } against ${amountList.length} amount${
+          amountList.length === 1 ? "" : "s"
+        }.`
+      : undefined;
+
   const status = useMemo(() => {
     if (errorMessage) {
       return {
         kind: "error" as const,
-        title: "Transaction failed",
+        title: "Airdrop failed",
         detail: errorMessage,
       };
     }
     if (isSuccess) {
       return {
         kind: "success" as const,
-        title: "Airdrop complete",
+        title: "Airdrop settled",
         detail: `${formattedTotal ?? total} ${tokenSymbol ?? "tokens"} sent to ${
           recipientList.length
         } recipient${recipientList.length === 1 ? "" : "s"}.`,
@@ -230,18 +292,18 @@ export default function AirdropForm() {
     if (isPending) {
       return {
         kind: "progress" as const,
-        title: "Waiting for your wallet",
+        title: "Waiting on your wallet",
         detail:
           phase === "approve"
-            ? "Confirm the approval in MetaMask so TSender can move your tokens."
-            : "Confirm the airdrop in MetaMask to send the tokens.",
+            ? "Confirm the approval so TSender can move your tokens."
+            : "Confirm the airdrop to release the tokens.",
       };
     }
     if (isConfirming) {
       return {
         kind: "progress" as const,
-        title: phase === "approve" ? "Approving tokens" : "Sending airdrop",
-        detail: "Transaction submitted — waiting for the network to confirm it.",
+        title: phase === "approve" ? "Approving tokens" : "Broadcasting airdrop",
+        detail: "Submitted. Waiting for the network to confirm.",
       };
     }
     return null;
@@ -259,42 +321,41 @@ export default function AirdropForm() {
 
   const showStatus = status && !(statusDismissed && status.kind !== "progress");
 
+  // Announcements mirror into persistent live regions so screen readers pick them
+  // up reliably. Inserting a polite region together with its content announces
+  // inconsistently, so these exist from first render and only their text changes.
+  const politeAnnouncement =
+    status && status.kind !== "error" ? `${status.title}. ${status.detail}` : "";
+  const alertAnnouncement =
+    status && status.kind === "error" ? `${status.title}. ${status.detail}` : "";
+
   const buttonLabel = isPending
-    ? "Check your wallet…"
+    ? "Check your wallet"
     : isConfirming
       ? phase === "approve"
-        ? "Approving…"
-        : "Airdropping…"
-      : "Send Token";
+        ? "Approving"
+        : "Airdropping"
+      : "Approve and send";
 
   async function getApprovedAmount(
     tSenderAddress: string | null,
   ): Promise<number> {
     if (!tSenderAddress) {
-      alert("No address found, please use a supported chain");
-      return 0;
+      throw new Error(
+        "TSender isn't deployed on this network. Switch to a supported chain and try again.",
+      );
     }
-    // read from the chain to see if we have approved enough token
     const response = await readContract(config, {
       abi: erc20Abi,
       address: tokenAddress as `0x${string}`,
       functionName: "allowance",
       args: [account.address, tSenderAddress as `0x${string}`],
     });
-    // token.allowance(account,tsender)
     return response as number;
   }
 
   async function handelSubmit() {
-    // 1a. If already approved, moved to step 2. --> contract address of tsender contract
-    // 1b. Approve our tsender contract to send our tokens. -->token address of the token we want to send
-    // 2. Call the airdrop function on the tsender contract
-    // 3. Wait for the transaction to be mined
-
-    // Get the tsender contract address for the current chain the tsender in bracker ["tsender"] is the key of the object which
-    // holds the contract address for the tsender contract for that chain we will use this address to call the airdrop function on
-    // the tsender contract
-
+    if (isBusy) return;
     setIsSuccess(false);
     setErrorMessage(null);
     setPhase(null);
@@ -320,7 +381,6 @@ export default function AirdropForm() {
         setIsConfirming(true);
         await waitForTransactionReceipt(config, { hash: approvalHash });
         setIsConfirming(false);
-        console.log("Approval transaction mined:", approvalHash);
       }
 
       setPhase("airdrop");
@@ -332,7 +392,6 @@ export default function AirdropForm() {
       });
       setIsConfirming(true);
       await waitForTransactionReceipt(config, { hash: airdropHash });
-      console.log("Airdrop transaction mined:", airdropHash);
       setIsSuccess(true);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -341,135 +400,197 @@ export default function AirdropForm() {
     }
   }
 
+  const statusTone =
+    status?.kind === "error"
+      ? "border-danger/40"
+      : status?.kind === "success"
+        ? "border-success/40"
+        : "border-line";
+
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm sm:p-6 lg:p-8 dark:border-white/10 dark:bg-white/[0.03]">
-        <div className="flex flex-col gap-5 sm:gap-6">
+    <div className="grid overflow-hidden rounded-[6px] border border-line bg-surface lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      {/* Persistent live regions: created once, text swapped in place */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {politeAnnouncement}
+      </div>
+      <div role="alert" className="sr-only">
+        {alertAnnouncement}
+      </div>
+
+      {/* Workbench */}
+      <div className="border-b border-line p-5 sm:p-7 lg:border-r lg:border-b-0">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
+            Batch builder
+          </h2>
+          <span className="font-mono text-[11px] text-ink-faint">
+            {chainsToTSender[chainId]?.tsender
+              ? (CHAIN_NAMES[chainId] ?? "Unsupported chain")
+              : "Unsupported chain"}
+          </span>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-5">
           <InputField
-            label="Token Address"
-            placeholder="0x"
+            index="01"
+            label="Token address"
+            placeholder="0x…"
             value={tokenAddress}
             onChange={(e) => setTokenAddress(e.target.value)}
           />
           <InputField
+            index="02"
             label="Recipients"
-            placeholder="0x12314, 0x12342342"
+            placeholder={"0x1234…\n0x5678…"}
             value={recipients}
             onChange={(e) => setRecipients(e.target.value)}
             large={true}
+            hint={`${recipientList.length} address${
+              recipientList.length === 1 ? "" : "es"
+            }`}
           />
           <InputField
-            label="Amount"
-            placeholder="100, 200, 300, ..."
+            index="03"
+            label="Amounts · raw units"
+            placeholder={"1000000000000000000\n2500000000000000000"}
             value={amounts}
             onChange={(e) => setAmounts(e.target.value)}
             large={true}
+            hint={`${amountList.length} value${amountList.length === 1 ? "" : "s"}`}
+            errorMessage={misalignedMessage}
           />
         </div>
 
-        <button
-          onClick={handelSubmit}
-          disabled={isBusy}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-lime-400 px-6 py-3 text-sm font-semibold text-[#0b0d0a] transition-all duration-200 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:brightness-100 disabled:active:scale-100 sm:mt-8 sm:w-auto"
-        >
-          {isBusy && <Spinner />}
-          {buttonLabel}
-        </button>
-
-        {tokenName && (
-          <div className="mt-6 rounded-2xl border border-black/10 bg-black/[0.02] p-4 sm:mt-8 sm:p-5 dark:border-white/10 dark:bg-white/[0.02]">
-            <h3 className="text-sm font-semibold text-black/80 dark:text-white/80">
-              Transaction Details
-            </h3>
-            <dl className="mt-3 flex flex-col gap-2.5 text-sm">
-              <div className="flex items-start justify-between gap-4">
-                <dt className="shrink-0 text-black/55 dark:text-white/55">
-                  Token Name:
-                </dt>
-                <dd className="text-right font-mono break-all text-black/85 dark:text-white/85">
-                  {tokenName}
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-4">
-                <dt className="shrink-0 text-black/55 dark:text-white/55">
-                  Amount (wei):
-                </dt>
-                <dd className="text-right font-mono break-all text-black/85 dark:text-white/85">
-                  {Number.isInteger(total) ? total : "—"}
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-4">
-                <dt className="shrink-0 text-black/55 dark:text-white/55">
-                  Amount (tokens):
-                </dt>
-                <dd className="text-right font-mono break-all text-black/85 dark:text-white/85">
-                  {formattedTotal ?? "—"}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        )}
+        <p className="mt-4 font-mono text-[11px] leading-relaxed text-ink-faint">
+          One amount per address, in the token&apos;s smallest unit. USDC uses 6
+          decimals — 1000000 is 1 USDC.
+        </p>
       </div>
 
-      {showStatus && status && (
-        <div
-          role={status.kind === "error" ? "alert" : "status"}
-          className={`fixed right-4 bottom-4 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border p-4 shadow-lg backdrop-blur ${
-            status.kind === "error"
-              ? "border-red-500/25 bg-red-500/[0.08] dark:bg-red-500/[0.12]"
-              : "border-black/10 bg-white/95 dark:border-white/10 dark:bg-[#121212]/95"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <span
-              className={`mt-0.5 shrink-0 ${
-                status.kind === "error"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-lime-600 dark:text-lime-400"
+      {/* Run inspector */}
+      <aside className="flex flex-col bg-surface-2 p-5 sm:p-7">
+        <h2 className="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
+          Run summary
+        </h2>
+
+        <dl className="mt-5">
+          <SummaryRow
+            label="Token"
+            value={tokenSymbol ? `${tokenSymbol}` : tokenName ?? "—"}
+          />
+          <SummaryRow label="Recipients" value={String(recipientList.length)} />
+          <SummaryRow
+            label="Amount · wei"
+            value={Number.isInteger(total) && total > 0 ? total : "—"}
+          />
+          <SummaryRow
+            label="Amount · tokens"
+            value={formattedTotal ?? "—"}
+            accent
+          />
+        </dl>
+
+        <ul className="mt-5 flex flex-col gap-2">
+          {checks.map((check) => (
+            <li
+              key={check.pass}
+              className={`flex items-start gap-2 font-mono text-[11px] leading-relaxed ${
+                check.ok ? "text-ink-soft" : "text-progress"
               }`}
             >
-              {status.kind === "progress" ? (
-                <Spinner />
-              ) : status.kind === "success" ? (
-                <CheckIcon />
-              ) : (
-                <AlertIcon />
-              )}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-black/85 dark:text-white/90">
-                {status.title}
-              </p>
-              <p className="mt-0.5 text-xs leading-relaxed break-words text-black/60 dark:text-white/60">
-                {status.detail}
-              </p>
-            </div>
-            {status.kind !== "progress" && (
-              <button
-                onClick={() => setStatusDismissed(true)}
-                aria-label="Dismiss"
-                className="-mt-1 -mr-1 shrink-0 rounded-md p-1 text-black/40 transition-colors hover:text-black/70 dark:text-white/40 dark:hover:text-white/70"
+              <span
+                className={`mt-px shrink-0 ${
+                  check.ok ? "text-success" : "text-progress"
+                }`}
               >
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M6 6l12 12M18 6L6 18"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+                {check.ok ? (
+                  <CheckIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <span aria-hidden="true">○</span>
+                )}
+              </span>
+              <span>{check.ok ? check.pass : check.fail}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={handelSubmit}
+            aria-busy={isBusy}
+            aria-disabled={isBusy}
+            className={`group flex w-full items-center justify-between gap-3 rounded-[3px] bg-ink px-4 py-3 text-sm font-medium text-paper transition-transform duration-150 ${
+              isBusy
+                ? "cursor-not-allowed opacity-60"
+                : "hover:-translate-y-px"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              {isBusy && <Spinner />}
+              {buttonLabel}
+            </span>
+            <span
+              aria-hidden="true"
+              className="font-mono text-[11px] text-paper/50 transition-colors group-hover:text-signal-bright"
+            >
+              {recipientList.length} out
+            </span>
+          </button>
         </div>
-      )}
+
+        {showStatus && status && (
+          <div className={`mt-4 rounded-[3px] border ${statusTone} bg-paper p-3`}>
+            <div className="flex items-start gap-3">
+              <span
+                className={`mt-0.5 shrink-0 ${
+                  status.kind === "error"
+                    ? "text-danger"
+                    : status.kind === "success"
+                      ? "text-success"
+                      : "text-progress"
+                }`}
+              >
+                {status.kind === "progress" ? (
+                  <Spinner />
+                ) : status.kind === "success" ? (
+                  <CheckIcon />
+                ) : (
+                  <AlertIcon />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ink">{status.title}</p>
+                <p className="mt-1 text-xs leading-relaxed break-words text-ink-soft">
+                  {status.detail}
+                </p>
+              </div>
+              {status.kind !== "progress" && (
+                <button
+                  type="button"
+                  onClick={() => setStatusDismissed(true)}
+                  aria-label="Dismiss status message"
+                  className="-m-1 shrink-0 rounded-[3px] p-2 text-ink-faint transition-colors hover:text-ink"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 6l12 12M18 6L6 18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </aside>
     </div>
   );
 }
-
-//?  0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
