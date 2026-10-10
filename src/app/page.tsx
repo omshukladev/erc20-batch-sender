@@ -83,14 +83,23 @@ export default function Home() {
         />
         <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
           <div>
-            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.2em] text-ink-soft uppercase">
+            <span
+              className="rise inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.2em] text-ink-soft uppercase"
+              style={{ animationDelay: "0ms" }}
+            >
               <span className="h-2 w-2 bg-signal" aria-hidden="true" />
               Batch ERC20 transfer
             </span>
-            <h1 className="mt-5 max-w-[16ch] font-display text-[34px] leading-[1.06] font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+            <h1
+              className="rise mt-5 max-w-[16ch] font-display text-[34px] leading-[1.06] font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl"
+              style={{ animationDelay: "70ms" }}
+            >
               Send one token to a whole list of wallets.
             </h1>
-            <p className="mt-5 max-w-[54ch] text-[15px] leading-relaxed text-ink-soft sm:text-base">
+            <p
+              className="rise mt-5 max-w-[54ch] text-[15px] leading-relaxed text-ink-soft sm:text-base"
+              style={{ animationDelay: "150ms" }}
+            >
               One approval, one transaction, everyone paid. TSender never holds
               your tokens — you approve once and the contract distributes to
               every address at the same time.
@@ -98,10 +107,11 @@ export default function Home() {
           </div>
 
           <dl className="border-t border-line lg:border-t-0">
-            {FACTS.map((fact) => (
+            {FACTS.map((fact, index) => (
               <div
                 key={fact.label}
-                className="flex flex-col gap-1 border-b border-line py-3.5 sm:flex-row sm:items-baseline sm:gap-4 lg:py-4"
+                className="rise flex flex-col gap-1 border-b border-line py-3.5 sm:flex-row sm:items-baseline sm:gap-4 lg:py-4"
+                style={{ animationDelay: `${210 + index * 70}ms` }}
               >
                 <dt className="w-28 shrink-0 font-mono text-[11px] tracking-[0.16em] text-ink-faint uppercase">
                   {fact.label}

@@ -128,6 +128,122 @@ main {
   background-size: 30px 30px;
 }
 
+/* Motion system: one set of timings and curves so every state change reads in
+   the same voice. Entrances are opt-in — they live only inside the
+   no-preference media query, so the plain document is the reduced-motion
+   version and nothing has to be chased with an override. */
+:root {
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-instant: 100ms;
+  --dur-quick: 150ms;
+  --dur-base: 200ms;
+  --dur-medium: 260ms;
+  --dur-slow: 400ms;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Three-beat arrival: appear, overshoot a hair, settle. A flat opacity fade
+   reads as dead; the tiny scale overshoot gives the surface a heartbeat. */
+@keyframes status-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.006);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes status-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes err-in {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise-in var(--dur-slow) var(--ease-out-quart) both;
+  }
+
+  .status-card {
+    animation: status-in var(--dur-medium) var(--ease-out-expo) both;
+  }
+
+  .status-card--out {
+    animation: status-out var(--dur-quick) var(--ease-out-quart) forwards;
+  }
+
+  .err-reveal {
+    animation: err-in 240ms var(--ease-out-quart) both;
+  }
+}
+
+/* Icon swap: two glyphs share one grid cell and cross-fade, so the exchange
+   reads as a change of state rather than a hard cut. */
+.swap-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.swap-icon > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--dur-base) var(--ease-out-quart),
+    transform var(--dur-base) var(--ease-out-quart),
+    filter var(--dur-base) var(--ease-out-quart);
+}
+
+.swap-icon > [data-hidden="true"] {
+  opacity: 0;
+  transform: scale(0.4);
+  filter: blur(4px);
+}
+
+/* The error line grows into place instead of shoving the field's neighbours
+   down. Static height is the default; only the entrance is opt-in. */
+.err-reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.err-reveal > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -136,8 +252,10 @@ main {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 
   /* Loading indicators carry state, not decoration: keep them moving */

@@ -1,6 +1,6 @@
 "use client";
 import InputField from "@/components/ui/InputField";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { chainsToTSender, tsenderAbi, erc20Abi } from "@/constants";
 import { useAccount, useChainId, useConfig, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
@@ -9,6 +9,14 @@ import { calculateTotal } from "@/utils/calculateTotal/calculateTotal";
 
 const STORAGE_KEY = "tsender-form-inputs";
 const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+const STATUS_EXIT_MS = 150;
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 const CHAIN_NAMES: Record<number, string> = {
   1: "Ethereum",
@@ -126,7 +134,9 @@ export default function AirdropForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusDismissed, setStatusDismissed] = useState(false);
+  const [statusLeaving, setStatusLeaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const statusExitTimer = useRef<number | null>(null);
 
   const config = useConfig();
   const chainId = useChainId();
@@ -181,6 +191,15 @@ export default function AirdropForm() {
       JSON.stringify({ tokenAddress, recipients, amounts }),
     );
   }, [tokenAddress, recipients, amounts, hasLoaded]);
+
+  // clear a pending exit timer if the component goes away mid-dismissal
+  useEffect(() => {
+    return () => {
+      if (statusExitTimer.current !== null) {
+        window.clearTimeout(statusExitTimer.current);
+      }
+    };
+  }, []);
 
   // read the token metadata to show details about what is being sent
   useEffect(() => {
@@ -321,6 +340,21 @@ export default function AirdropForm() {
 
   const showStatus = status && !(statusDismissed && status.kind !== "progress");
 
+  // Let the card finish its exit before unmounting. Reduced motion skips the
+  // wait so nothing lingers on screen with no animation to explain it.
+  function dismissStatus() {
+    if (prefersReducedMotion()) {
+      setStatusDismissed(true);
+      return;
+    }
+    setStatusLeaving(true);
+    statusExitTimer.current = window.setTimeout(() => {
+      setStatusDismissed(true);
+      setStatusLeaving(false);
+      statusExitTimer.current = null;
+    }, STATUS_EXIT_MS);
+  }
+
   // Announcements mirror into persistent live regions so screen readers pick them
   // up reliably. Inserting a polite region together with its content announces
   // inconsistently, so these exist from first render and only their text changes.
@@ -360,6 +394,11 @@ export default function AirdropForm() {
     setErrorMessage(null);
     setPhase(null);
     setStatusDismissed(false);
+    if (statusExitTimer.current !== null) {
+      window.clearTimeout(statusExitTimer.current);
+      statusExitTimer.current = null;
+    }
+    setStatusLeaving(false);
 
     if (!account.address) {
       setErrorMessage("Connect your wallet first.");
@@ -494,20 +533,29 @@ export default function AirdropForm() {
           {checks.map((check) => (
             <li
               key={check.pass}
-              className={`flex items-start gap-2 font-mono text-[11px] leading-relaxed ${
+              className={`flex items-start gap-2 font-mono text-[11px] leading-relaxed transition-colors duration-200 ${
                 check.ok ? "text-ink-soft" : "text-progress"
               }`}
             >
               <span
-                className={`mt-px shrink-0 ${
+                className={`swap-icon mt-px shrink-0 transition-colors duration-200 ${
                   check.ok ? "text-success" : "text-progress"
                 }`}
               >
-                {check.ok ? (
+                <span
+                  aria-hidden="true"
+                  className="swap-icon__item"
+                  data-hidden={!check.ok}
+                >
                   <CheckIcon className="h-3.5 w-3.5" />
-                ) : (
-                  <span aria-hidden="true">○</span>
-                )}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="swap-icon__item"
+                  data-hidden={check.ok}
+                >
+                  ○
+                </span>
               </span>
               <span>{check.ok ? check.pass : check.fail}</span>
             </li>
@@ -520,10 +568,10 @@ export default function AirdropForm() {
             onClick={handelSubmit}
             aria-busy={isBusy}
             aria-disabled={isBusy}
-            className={`group flex w-full items-center justify-between gap-3 rounded-[3px] bg-ink px-4 py-3 text-sm font-medium text-paper transition-transform duration-150 ${
+            className={`group flex w-full items-center justify-between gap-3 rounded-[3px] bg-ink px-4 py-3 text-sm font-medium text-paper transition-[transform,opacity] duration-150 ease-out ${
               isBusy
                 ? "cursor-not-allowed opacity-60"
-                : "hover:-translate-y-px"
+                : "hover:-translate-y-px active:scale-[0.985] active:duration-75"
             }`}
           >
             <span className="flex items-center gap-2.5">
@@ -540,7 +588,12 @@ export default function AirdropForm() {
         </div>
 
         {showStatus && status && (
-          <div className={`mt-4 rounded-[3px] border ${statusTone} bg-paper p-3`}>
+          <div
+            key={status.kind}
+            className={`status-card mt-4 rounded-[3px] border ${statusTone} bg-paper p-3 ${
+              statusLeaving ? "status-card--out" : ""
+            }`}
+          >
             <div className="flex items-start gap-3">
               <span
                 className={`mt-0.5 shrink-0 ${
@@ -568,7 +621,7 @@ export default function AirdropForm() {
               {status.kind !== "progress" && (
                 <button
                   type="button"
-                  onClick={() => setStatusDismissed(true)}
+                  onClick={dismissStatus}
                   aria-label="Dismiss status message"
                   className="-m-1 shrink-0 rounded-[3px] p-2 text-ink-faint transition-colors hover:text-ink"
                 >

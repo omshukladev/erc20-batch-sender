@@ -31,33 +31,34 @@ function ThemeToggle() {
       title={isDark ? "Switch to light theme" : "Switch to dark theme"}
       className={iconButtonClass}
     >
-      {isDark ? (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          aria-hidden="true"
-          className="h-[17px] w-[17px]"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 3v2m0 14v2M5.2 5.2l1.4 1.4m10.8 10.8 1.4 1.4M3 12h2m14 0h2M5.2 18.8l1.4-1.4M17.4 5.2l1.4 1.4" />
-        </svg>
-      ) : (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="h-[17px] w-[17px]"
-        >
-          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-        </svg>
-      )}
+      <span aria-hidden="true" className="swap-icon">
+        <span className="swap-icon__item" data-hidden={!isDark}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            className="h-[17px] w-[17px]"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 3v2m0 14v2M5.2 5.2l1.4 1.4m10.8 10.8 1.4 1.4M3 12h2m14 0h2M5.2 18.8l1.4-1.4M17.4 5.2l1.4 1.4" />
+          </svg>
+        </span>
+        <span className="swap-icon__item" data-hidden={isDark}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-[17px] w-[17px]"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+          </svg>
+        </span>
+      </span>
     </button>
   );
 }

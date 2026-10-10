@@ -96,15 +96,17 @@ export default function InputField({
       )}
 
       {invalid && (
-        <p
-          id={errorId}
-          className="mt-2 flex items-start gap-1.5 font-mono text-[11px] leading-relaxed text-progress"
-        >
-          <span className="mt-px shrink-0">
-            <AlertIcon />
-          </span>
-          <span>{errorMessage}</span>
-        </p>
+        <div className="err-reveal">
+          <p
+            id={errorId}
+            className="flex items-start gap-1.5 pt-2 font-mono text-[11px] leading-relaxed text-progress"
+          >
+            <span className="mt-px shrink-0">
+              <AlertIcon />
+            </span>
+            <span>{errorMessage}</span>
+          </p>
+        </div>
       )}
     </div>
   );
